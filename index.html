@@ -1,0 +1,2266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>World Cup 2026 Team Flight Map</title>
+  <link rel="icon" href="data:," />
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+  <style>
+    :root {
+      --panel-bg: #ffffff;
+      --sidebar-width: max(320px, 20vw);
+      --text: #17212b;
+      --muted: #68717d;
+      --line: #d8dee7;
+      --accent: #006adc;
+      --accent-dark: #074d9c;
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #eef2f6;
+    }
+
+    #map {
+      position: fixed;
+      top: 0;
+      right: var(--sidebar-width);
+      bottom: 0;
+      left: 0;
+    }
+
+    .panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 2;
+      width: var(--sidebar-width);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 18px;
+      overflow: hidden;
+      background: var(--panel-bg);
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .title {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .title-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    h1 {
+      min-width: 0;
+      flex: 1 1 auto;
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.2;
+      font-weight: 760;
+      letter-spacing: 0;
+    }
+
+    .wc26-logo {
+      flex: 0 0 auto;
+      width: 44px;
+      height: 44px;
+      display: block;
+      object-fit: contain;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(124px, 0.62fr);
+      gap: 10px;
+      align-items: end;
+    }
+
+    .control,
+    .control-team,
+    .control-stage {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    label {
+      color: #3f4954;
+      font-size: 12px;
+      font-weight: 680;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    select,
+    input {
+      width: 100%;
+      min-height: 40px;
+      padding: 8px 10px;
+      color: var(--text);
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font: inherit;
+      font-size: 14px;
+    }
+
+    select:focus,
+    input:focus {
+      outline: 2px solid rgba(0, 106, 220, 0.2);
+      border-color: var(--accent);
+    }
+
+    select:disabled {
+      cursor: wait;
+      opacity: 0.68;
+    }
+
+    button {
+      min-height: 40px;
+      padding: 8px 12px;
+      color: #fff;
+      background: var(--accent);
+      border: 0;
+      border-radius: 6px;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: var(--accent-dark);
+    }
+
+    .team-select {
+      position: relative;
+      width: 100%;
+    }
+
+    .stage-select {
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .stage-select:disabled {
+      cursor: wait;
+    }
+
+    .team-select-button {
+      width: 100%;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 10px;
+      color: var(--text);
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 650;
+      text-align: left;
+    }
+
+    .team-select-button:hover,
+    .team-select-button:focus {
+      color: var(--text);
+      background: #f8fafc;
+      outline: 2px solid rgba(0, 106, 220, 0.16);
+      border-color: var(--accent);
+    }
+
+    .team-select-button:disabled {
+      cursor: wait;
+      opacity: 0.68;
+    }
+
+    .team-select-value {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .team-select-caret {
+      width: 0;
+      height: 0;
+      flex: 0 0 auto;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 6px solid #526070;
+    }
+
+    .team-options {
+      position: absolute;
+      top: calc(100% + 5px);
+      left: 0;
+      right: 0;
+      z-index: 8;
+      max-height: 280px;
+      overflow: auto;
+      padding: 5px;
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
+    }
+
+    .team-option {
+      width: 100%;
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 7px 8px;
+      color: var(--text);
+      background: #fff;
+      border: 0;
+      border-radius: 5px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: left;
+    }
+
+    .team-option:hover,
+    .team-option:focus,
+    .team-option[aria-selected="true"] {
+      color: var(--text);
+      background: #edf5ff;
+      outline: none;
+    }
+
+    .team-option[aria-selected="true"] .team-name {
+      font-weight: 780;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 132px), 1fr));
+      gap: 10px;
+    }
+
+    .stat {
+      min-width: 0;
+      overflow: hidden;
+      padding: 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius);
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .stat-value {
+      margin-top: 5px;
+      font-size: 22px;
+      line-height: 1.08;
+      font-weight: 780;
+      letter-spacing: 0;
+      white-space: normal;
+      overflow-wrap: break-word;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 2px;
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .count {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .route-list,
+    .leaderboard {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .item {
+      display: grid;
+      gap: 5px;
+      padding: 10px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius);
+    }
+
+    .item-main {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 720;
+    }
+
+    .item-main span:first-child {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .item-meta {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .rank {
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .team-with-flag {
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      vertical-align: middle;
+    }
+
+    .flag-icon {
+      width: 19px;
+      height: 14px;
+      flex: 0 0 auto;
+      object-fit: cover;
+      border-radius: 2px;
+      box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.12);
+      background: #f8fafc;
+    }
+
+    .team-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .match-card {
+      display: grid;
+      gap: 7px;
+      padding: 11px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius);
+    }
+
+    .match-top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .match-number {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 760;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .match-date {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .match-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px 7px;
+      font-size: 14px;
+      line-height: 1.3;
+      font-weight: 760;
+    }
+
+    .versus {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 680;
+      text-transform: uppercase;
+    }
+
+    .match-meta {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .leg-step {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 0 8px 12px;
+      color: #4b5563;
+    }
+
+    .leg-arrow {
+      width: 22px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .leg-summary {
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .leg-distance {
+      color: var(--text);
+      font-weight: 760;
+    }
+
+    .leg-context {
+      color: var(--muted);
+      font-weight: 680;
+    }
+
+    .same-city {
+      color: #697586;
+    }
+
+    .note {
+      padding-top: 10px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .about {
+      position: relative;
+      flex: 0 0 auto;
+      display: grid;
+      gap: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+    }
+
+    .about-button {
+      width: 100%;
+      min-height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 10px;
+      color: var(--text);
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 760;
+      text-align: left;
+    }
+
+    .about-button:hover,
+    .about-button:focus {
+      color: var(--text);
+      background: #f8fafc;
+      outline: 2px solid rgba(0, 106, 220, 0.16);
+      border-color: var(--accent);
+    }
+
+    .about-button::after {
+      content: "";
+      width: 0;
+      height: 0;
+      flex: 0 0 auto;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 6px solid #526070;
+      transition: transform 160ms ease;
+    }
+
+    .about-button[aria-expanded="true"]::after {
+      transform: rotate(180deg);
+    }
+
+    .about-content {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: calc(100% + 8px);
+      z-index: 6;
+      max-height: min(320px, calc(100vh - 120px));
+      overflow: auto;
+      display: grid;
+      gap: 12px;
+      padding: 10px;
+      color: var(--muted);
+      background: var(--panel-bg);
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      box-shadow: 0 -14px 28px rgba(15, 23, 42, 0.16);
+      font-size: 12px;
+      line-height: 1.4;
+      opacity: 0;
+      transform: translateY(12px) scale(0.985);
+      transform-origin: bottom center;
+      pointer-events: none;
+      transition:
+        opacity 180ms ease,
+        transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      will-change: opacity, transform;
+    }
+
+    .about-content.is-open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .about-section {
+      display: grid;
+      gap: 5px;
+    }
+
+    .about-heading {
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 760;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .about-content p,
+    .about-content ul {
+      margin: 0;
+    }
+
+    .about-content ul {
+      padding-left: 17px;
+    }
+
+    .about-content li + li {
+      margin-top: 4px;
+    }
+
+    .about-content code {
+      color: #334155;
+      font-size: 11px;
+      overflow-wrap: anywhere;
+    }
+
+    .about-content a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 650;
+    }
+
+    .about-content a:hover,
+    .about-content a:focus {
+      color: var(--accent-dark);
+      text-decoration: underline;
+    }
+
+    .about-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .about-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 8px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .about-button::after,
+      .about-content {
+        transition: none;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .filters {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .maplibregl-popup-content,
+    .mapboxgl-popup-content {
+      padding: 10px 12px;
+      border-radius: 6px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+      font: 13px/1.35 Inter, ui-sans-serif, system-ui, sans-serif;
+    }
+
+    .maplibregl-popup-close-button,
+    .mapboxgl-popup-close-button {
+      top: 4px;
+      right: 4px;
+      width: 24px;
+      height: 24px;
+      min-height: 0;
+      padding: 0;
+      color: #526070;
+      background: transparent;
+      border-radius: 4px;
+      font-size: 18px;
+      line-height: 22px;
+    }
+
+    .maplibregl-popup-close-button:hover,
+    .mapboxgl-popup-close-button:hover,
+    .maplibregl-popup-close-button:focus,
+    .mapboxgl-popup-close-button:focus {
+      color: var(--text);
+      background: #f1f5f9;
+    }
+
+    .popup-title {
+      margin-bottom: 4px;
+      padding-right: 26px;
+      line-height: 1.25;
+      font-weight: 760;
+    }
+
+    .popup-meta {
+      color: #526070;
+    }
+
+    @media (max-width: 720px) {
+      #map {
+        inset: 0;
+      }
+
+      .panel {
+        top: auto;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: auto;
+        max-height: 44vh;
+        padding: 14px 14px 72px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+      }
+
+      .stats {
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 132px), 1fr));
+      }
+
+      .scroll {
+        min-height: auto;
+        overflow: visible;
+        padding-right: 0;
+      }
+
+      .about {
+        position: fixed;
+        left: 14px;
+        right: 14px;
+        bottom: 14px;
+        z-index: 5;
+        padding-top: 0;
+        border-top: 0;
+        background: var(--panel-bg);
+      }
+
+      .about-content {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: calc(100% + 8px);
+        max-height: min(300px, calc(44vh - 82px));
+        overflow: auto;
+        padding: 10px;
+        background: var(--panel-bg);
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        box-shadow: 0 -14px 28px rgba(15, 23, 42, 0.16);
+      }
+
+      .team-options {
+        max-height: 190px;
+      }
+
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <aside class="panel" aria-label="Map controls">
+    <div class="title">
+      <div class="title-top">
+        <h1>World Cup 2026 flight routes</h1>
+        <img
+          class="wc26-logo"
+          src="assets/fifa-world-cup-2026-logo.png"
+          alt="FIFA World Cup 2026 logo"
+        />
+      </div>
+      <p class="subtitle">Team-by-team routes, distances and estimated CO2e.</p>
+    </div>
+
+    <div class="filters">
+      <div class="control-team">
+        <label id="teamSelectLabel">Team</label>
+        <div id="teamSelect" class="team-select">
+          <button
+            id="teamSelectButton"
+            class="team-select-button"
+            type="button"
+            aria-haspopup="listbox"
+            aria-expanded="false"
+            aria-labelledby="teamSelectLabel teamSelectValue"
+            disabled
+          >
+            <span id="teamSelectValue" class="team-select-value">All teams</span>
+            <span class="team-select-caret" aria-hidden="true"></span>
+          </button>
+          <div id="teamOptions" class="team-options hidden" role="listbox" aria-labelledby="teamSelectLabel"></div>
+        </div>
+      </div>
+
+      <div class="control-stage">
+        <label for="stageSelect">Stage</label>
+        <select id="stageSelect" class="stage-select" disabled></select>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Route distance</div>
+        <div id="distanceValue" class="stat-value">-</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Estimated CO2e</div>
+        <div id="co2Value" class="stat-value">-</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Trips</div>
+        <div id="legsValue" class="stat-value">-</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Match cities</div>
+        <div id="citiesValue" class="stat-value">-</div>
+      </div>
+    </div>
+
+    <div class="section-title">
+      <span id="listTitle">Teams by distance</span>
+      <span id="listCount" class="count"></span>
+    </div>
+
+    <div class="scroll">
+      <div id="detailsList" class="route-list"></div>
+    </div>
+
+    <div class="about">
+      <button id="aboutToggle" class="about-button" type="button" aria-expanded="false" aria-controls="aboutContent">
+        About
+      </button>
+      <div id="aboutContent" class="about-content hidden">
+        <div class="about-section">
+          <div class="about-heading">Methodology</div>
+          <ul>
+            <li>Routes connect each team's consecutive match cities with geodesic lines between stadium coordinates.</li>
+            <li>Consecutive matches in the same city stay in the timeline, but add 0 km and 0 CO2e.</li>
+            <li>Airport access, training bases, ground transfers, aircraft type and actual charter routing are not included.</li>
+            <li>CO2e is estimated as route distance times US EPA passenger-mile air-travel factors times a 53-person delegation assumption based on FIFA's final release list limit: up to 26 players and up to 27 team officials.</li>
+          </ul>
+        </div>
+
+        <div class="about-section">
+          <div class="about-heading">Data Sources</div>
+          <ul>
+            <li><a href="https://www.thestatsapi.com/world-cup/data" target="_blank" rel="noopener">TheStatsAPI</a>: fixtures, teams, stages, stadiums.</li>
+            <li><a href="https://digitalhub.fifa.com/m/636f5c9c6f29771f/original/FWC2026_regulations_EN.pdf" target="_blank" rel="noopener">FIFA World Cup 26 Regulations</a>: final release list size used for the delegation assumption.</li>
+            <li><a href="https://www.epa.gov/climateleadership/ghg-emission-factors-hub" target="_blank" rel="noopener">US EPA GHG Emission Factors Hub</a>: passenger-mile air-travel emission factors.</li>
+          </ul>
+        </div>
+
+        <div class="about-section">
+          <div class="about-heading">Contact</div>
+          <li>Made by Semyon Skotnikov.</li>
+          <div class="about-links">
+            <a class="about-link" href="https://www.linkedin.com/in/sskotnikov/" target="_blank" rel="noopener">LinkedIn</a>
+            <a class="about-link" href="mailto:kangukangu10@gmail.com">Email</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    const ROUTES_URL = "wc26_flight_lines.geojson";
+    const POINTS_URL = "wc26_points.geojson";
+    const FIXTURES_URL = "world-cup-2026-fixtures.csv";
+    const ALL_TEAMS = "__all__";
+    const ALL_STAGES = "__all_stages__";
+    const STAGE_OPTIONS = [
+      { value: ALL_STAGES, label: "All stages" },
+      { value: "group-stage", label: "Group" },
+      { value: "round-of-32", label: "Round of 32" },
+      { value: "round-of-16", label: "Round of 16" },
+      { value: "quarter-finals", label: "Quarter-finals" },
+      { value: "semi-finals", label: "Semi-finals" },
+      { value: "third-place", label: "Third place" },
+      { value: "final", label: "Final" }
+    ];
+    const MAPBOX_STYLE_URL = "mapbox://styles/kangu100/cmrot60yj005a01qk1rea9qd6";
+    const MAPBOX_ACCESS_TOKEN = "pk.eyJ1Ijoia2FuZ3UxMDAiLCJhIjoiY21ybmJsd2w4MnprYTJ3cXp6ZXdobGIwNyJ9.hJEFC7ygEQn5R--kHkAmIQ";
+    const CARTO_BASEMAP_STYLE = {
+      version: 8,
+      glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+      sources: {
+        carto: {
+          type: "raster",
+          tiles: [
+            "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+            "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+            "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+            "https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
+          ],
+          tileSize: 256,
+          attribution: "&copy; OpenStreetMap contributors &copy; CARTO"
+        }
+      },
+      layers: [
+        {
+          id: "carto-light",
+          type: "raster",
+          source: "carto",
+          minzoom: 0,
+          maxzoom: 20
+        }
+      ]
+    };
+
+    const palette = [
+      "#006adc", "#c2185b", "#00897b", "#ef6c00", "#5e35b1", "#2e7d32",
+      "#d81b60", "#1565c0", "#6d4c41", "#7b1fa2", "#00796b", "#c62828",
+      "#3949ab", "#558b2f", "#ad1457", "#0277bd", "#9e9d24", "#f4511e"
+    ];
+
+    const FLAG_CODES = {
+      "Algeria": "dz",
+      "Argentina": "ar",
+      "Australia": "au",
+      "Austria": "at",
+      "Belgium": "be",
+      "Bosnia and Herzegovina": "ba",
+      "Brazil": "br",
+      "Cabo Verde": "cv",
+      "Canada": "ca",
+      "Colombia": "co",
+      "Congo DR": "cd",
+      "Cote d'Ivoire": "ci",
+      "Croatia": "hr",
+      "Curacao": "cw",
+      "Czechia": "cz",
+      "Ecuador": "ec",
+      "Egypt": "eg",
+      "England": "gb-eng",
+      "France": "fr",
+      "Germany": "de",
+      "Ghana": "gh",
+      "Haiti": "ht",
+      "IR Iran": "ir",
+      "Iraq": "iq",
+      "Japan": "jp",
+      "Jordan": "jo",
+      "Korea Republic": "kr",
+      "Mexico": "mx",
+      "Morocco": "ma",
+      "Netherlands": "nl",
+      "New Zealand": "nz",
+      "Norway": "no",
+      "Panama": "pa",
+      "Paraguay": "py",
+      "Portugal": "pt",
+      "Qatar": "qa",
+      "Saudi Arabia": "sa",
+      "Scotland": "gb-sct",
+      "Senegal": "sn",
+      "South Africa": "za",
+      "Spain": "es",
+      "Sweden": "se",
+      "Switzerland": "ch",
+      "Tunisia": "tn",
+      "Turkiye": "tr",
+      "United States": "us",
+      "Uruguay": "uy",
+      "Uzbekistan": "uz"
+    };
+
+    const TEAM_COLORS = {
+      "Algeria": "#00843D",
+      "Argentina": "#5DADE2",
+      "Australia": "#D6A400",
+      "Austria": "#E31B23",
+      "Belgium": "#D00027",
+      "Bosnia and Herzegovina": "#0057B8",
+      "Brazil": "#009C3B",
+      "Cabo Verde": "#003893",
+      "Canada": "#D52B1E",
+      "Colombia": "#E6A600",
+      "Congo DR": "#00A3E0",
+      "Cote d'Ivoire": "#F77F00",
+      "Croatia": "#C8102E",
+      "Curacao": "#002B7F",
+      "Czechia": "#D7141A",
+      "Ecuador": "#E2A800",
+      "Egypt": "#CE1126",
+      "England": "#C8102E",
+      "France": "#0055A4",
+      "Germany": "#111111",
+      "Ghana": "#D6A400",
+      "Haiti": "#00209F",
+      "IR Iran": "#239F40",
+      "Iraq": "#CE1126",
+      "Japan": "#004C99",
+      "Jordan": "#007A3D",
+      "Korea Republic": "#CD2E3A",
+      "Mexico": "#006341",
+      "Morocco": "#C1272D",
+      "Netherlands": "#FF7F00",
+      "New Zealand": "#111111",
+      "Norway": "#BA0C2F",
+      "Panama": "#D21034",
+      "Paraguay": "#D52B1E",
+      "Portugal": "#C8102E",
+      "Qatar": "#8A1538",
+      "Saudi Arabia": "#006C35",
+      "Scotland": "#005EB8",
+      "Senegal": "#00853F",
+      "South Africa": "#007A4D",
+      "Spain": "#AA151B",
+      "Sweden": "#006AA7",
+      "Switzerland": "#D52B1E",
+      "Tunisia": "#E70013",
+      "Turkiye": "#E30A17",
+      "United States": "#3C3B6E",
+      "Uruguay": "#4FA3D1",
+      "Uzbekistan": "#0099B5"
+    };
+
+    let map;
+    let mapApi;
+    let routeData;
+    let pointData;
+    let fixtureRows = [];
+    let teamStats = new Map();
+    let teamMatches = new Map();
+    let selectedTeam = ALL_TEAMS;
+    let selectedStage = ALL_STAGES;
+    let routeAnimationFrame = null;
+
+    const teamSelect = document.getElementById("teamSelect");
+    const teamSelectButton = document.getElementById("teamSelectButton");
+    const teamSelectValue = document.getElementById("teamSelectValue");
+    const teamOptions = document.getElementById("teamOptions");
+    const stageSelect = document.getElementById("stageSelect");
+    const distanceValue = document.getElementById("distanceValue");
+    const co2Value = document.getElementById("co2Value");
+    const legsValue = document.getElementById("legsValue");
+    const citiesValue = document.getElementById("citiesValue");
+    const detailsList = document.getElementById("detailsList");
+    const listTitle = document.getElementById("listTitle");
+    const listCount = document.getElementById("listCount");
+    const aboutToggle = document.getElementById("aboutToggle");
+    const aboutContent = document.getElementById("aboutContent");
+
+    function asNumber(value) {
+      if (typeof value === "number") return value;
+      if (value === null || value === undefined || value === "") return 0;
+      return Number(String(value).replace(",", "."));
+    }
+
+    function formatKm(value) {
+      return `${Math.round(asNumber(value)).toLocaleString("en-US")} km`;
+    }
+
+    function formatTons(valueKg) {
+      const tons = asNumber(valueKg) / 1000;
+      return `${tons.toLocaleString("en-US", { maximumFractionDigits: 1 })} t`;
+    }
+
+    function formatDate(value) {
+      if (!value) return "";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value);
+      return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    }
+
+    function stageLabel(stage) {
+      return STAGE_OPTIONS.find((option) => option.value === stage)?.label || formatStage(stage);
+    }
+
+    function isSelectedStage(stage) {
+      return selectedStage === ALL_STAGES || stage === selectedStage;
+    }
+
+    function featureMatchesSelection(feature, team = selectedTeam) {
+      const p = feature.properties || {};
+      const teamMatchesSelection = team === ALL_TEAMS || p.team === team;
+      return teamMatchesSelection && isSelectedStage(p.stage);
+    }
+
+    function selectedMapFilter() {
+      const filters = [];
+
+      if (selectedTeam !== ALL_TEAMS) {
+        filters.push(["==", ["get", "team"], selectedTeam]);
+      }
+
+      if (selectedStage !== ALL_STAGES) {
+        filters.push(["==", ["get", "stage"], selectedStage]);
+      }
+
+      if (!filters.length) return null;
+      return filters.length === 1 ? filters[0] : ["all", ...filters];
+    }
+
+    function normalizeCity(value) {
+      return String(value || "")
+        .replace(/-/g, " ")
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    }
+
+    function hashString(value) {
+      let hash = 0;
+      for (let i = 0; i < value.length; i += 1) {
+        hash = ((hash << 5) - hash) + value.charCodeAt(i);
+        hash |= 0;
+      }
+      return Math.abs(hash);
+    }
+
+    function getMapboxAccessToken() {
+      const inlineToken = MAPBOX_ACCESS_TOKEN.trim();
+      if (inlineToken && inlineToken !== "PASTE_YOUR_MAPBOX_PUBLIC_TOKEN_HERE") {
+        return inlineToken;
+      }
+
+      return localStorage.getItem("wc26_mapbox_access_token") || "";
+    }
+
+    function withMapboxAccessToken(url, token) {
+      if (!token || url.includes("access_token=")) return url;
+      const separator = url.includes("?") ? "&" : "?";
+      return `${url}${separator}access_token=${encodeURIComponent(token)}`;
+    }
+
+    function mapboxUrlToHttp(url, token) {
+      if (!token) return null;
+
+      if (url.startsWith("https://api.mapbox.com/")) {
+        return withMapboxAccessToken(url, token);
+      }
+
+      if (!url.startsWith("mapbox://")) return null;
+
+      if (url.startsWith("mapbox://styles/")) {
+        const path = url.slice("mapbox://styles/".length);
+        return withMapboxAccessToken(`https://api.mapbox.com/styles/v1/${path}`, token);
+      }
+
+      if (url.startsWith("mapbox://sprites/")) {
+        const path = url.slice("mapbox://sprites/".length);
+        const parts = path.split("/");
+        const owner = parts.shift();
+        const styleWithSuffix = parts.join("/");
+        const suffixMatch = styleWithSuffix.match(/(@2x)?\.(json|png)$/);
+        const suffix = suffixMatch ? suffixMatch[0] : "";
+        const styleId = suffix ? styleWithSuffix.slice(0, -suffix.length) : styleWithSuffix;
+
+        return withMapboxAccessToken(
+          `https://api.mapbox.com/styles/v1/${owner}/${styleId}/sprite${suffix}`,
+          token
+        );
+      }
+
+      if (url.startsWith("mapbox://fonts/")) {
+        const path = url.slice("mapbox://fonts/".length);
+        const parts = path.split("/");
+        const owner = parts.shift();
+        const range = parts.pop();
+        const fontstack = parts.join("/");
+        return withMapboxAccessToken(
+          `https://api.mapbox.com/fonts/v1/${encodeURIComponent(owner)}/${encodeURIComponent(fontstack)}/${range}`,
+          token
+        );
+      }
+
+      const tilesetId = url.slice("mapbox://".length).replace(/\.json$/, "");
+      return withMapboxAccessToken(`https://api.mapbox.com/v4/${tilesetId}.json?secure`, token);
+    }
+
+    function getBasemapStyle() {
+      const token = getMapboxAccessToken();
+      return mapboxUrlToHttp(MAPBOX_STYLE_URL, token) || CARTO_BASEMAP_STYLE;
+    }
+
+    function transformMapboxRequest(url) {
+      const transformed = mapboxUrlToHttp(url, getMapboxAccessToken());
+      return transformed ? { url: transformed } : { url };
+    }
+
+    function colorForTeam(team) {
+      return TEAM_COLORS[team] || palette[hashString(team) % palette.length];
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function teamLabelMarkup(team) {
+      const safeTeam = escapeHtml(team);
+      const code = FLAG_CODES[team];
+      const flag = code
+        ? `<img class="flag-icon" src="https://flagcdn.com/${code}.svg" alt="" loading="lazy">`
+        : "";
+
+      return `<span class="team-with-flag">${flag}<span class="team-name">${safeTeam}</span></span>`;
+    }
+
+    function parseCsv(text) {
+      const rows = [];
+      let row = [];
+      let value = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i += 1) {
+        const char = text[i];
+        const nextChar = text[i + 1];
+
+        if (char === '"' && inQuotes && nextChar === '"') {
+          value += '"';
+          i += 1;
+          continue;
+        }
+
+        if (char === '"') {
+          inQuotes = !inQuotes;
+          continue;
+        }
+
+        if (char === "," && !inQuotes) {
+          row.push(value);
+          value = "";
+          continue;
+        }
+
+        if ((char === "\n" || char === "\r") && !inQuotes) {
+          if (char === "\r" && nextChar === "\n") i += 1;
+          row.push(value);
+          rows.push(row);
+          row = [];
+          value = "";
+          continue;
+        }
+
+        value += char;
+      }
+
+      if (value.length || row.length) {
+        row.push(value);
+        rows.push(row);
+      }
+
+      const headers = rows.shift() || [];
+      return rows
+        .filter((values) => values.some((cell) => cell !== ""))
+        .map((values) => Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""])));
+    }
+
+    function enrichFeatures(data) {
+      data.features.forEach((feature) => {
+        const team = feature.properties.team || "Unknown";
+        feature.properties.team_color = colorForTeam(team);
+      });
+    }
+
+    function annotateRouteStages() {
+      const pointByMatch = new Map();
+      const fixtureByTeamKey = new Map();
+      const makeKey = (team, kickoffUtc, stadium) => `${team}|${kickoffUtc}|${stadium}`;
+
+      pointData.features.forEach((feature) => {
+        const p = feature.properties;
+        pointByMatch.set(makeKey(p.team, p.kickoff_utc, p.stadium), p);
+      });
+
+      fixtureRows.forEach((row) => {
+        fixtureByTeamKey.set(makeKey(row.home_team, row.kickoff_utc, row.stadium), {
+          opponent: row.away_team,
+          homeAway: "home",
+          matchUrl: row.match_url
+        });
+        fixtureByTeamKey.set(makeKey(row.away_team, row.kickoff_utc, row.stadium), {
+          opponent: row.home_team,
+          homeAway: "away",
+          matchUrl: row.match_url
+        });
+      });
+
+      routeData.features.forEach((feature) => {
+        const p = feature.properties;
+        const point = pointByMatch.get(makeKey(p.team, p.kickoff_utc, p.stadium));
+        const fixture = fixtureByTeamKey.get(makeKey(p.team, p.kickoff_utc, p.stadium)) || {};
+        if (!point) return;
+
+        p.stage = point.stage || "";
+        p.group = point.group || "";
+        p.match_number = point.match_number;
+        p.opponent = fixture.opponent || "";
+        p.home_away = fixture.homeAway || "";
+        p.match_url = fixture.matchUrl || "";
+      });
+    }
+
+    function buildSelectionStat(team = selectedTeam) {
+      const routeFeatures = routeData.features.filter((feature) => featureMatchesSelection(feature, team));
+      const pointFeatures = pointData.features.filter((feature) => featureMatchesSelection(feature, team));
+      const cities = new Set();
+      let distanceKm = 0;
+      let co2eKg = 0;
+
+      routeFeatures.forEach((feature) => {
+        const p = feature.properties;
+        distanceKm += asNumber(p.distance_km);
+        co2eKg += asNumber(p.co2e_kg);
+        if (p.prev_city) cities.add(p.prev_city);
+        if (p.host_city) cities.add(p.host_city);
+      });
+
+      pointFeatures.forEach((feature) => {
+        const city = feature.properties.host_city;
+        if (city) cities.add(city);
+      });
+
+      return {
+        team,
+        color: colorForTeam(team),
+        distanceKm,
+        co2eKg,
+        legs: routeFeatures,
+        cities
+      };
+    }
+
+    function computeTeamStats() {
+      const stats = new Map();
+
+      routeData.features.forEach((feature) => {
+        const p = feature.properties;
+        const team = p.team || "Unknown";
+        if (!stats.has(team)) {
+          stats.set(team, {
+            team,
+            color: colorForTeam(team),
+            distanceKm: 0,
+            co2eKg: 0,
+            legs: [],
+            cities: new Set()
+          });
+        }
+
+        const stat = stats.get(team);
+        stat.distanceKm += asNumber(p.distance_km);
+        stat.co2eKg += asNumber(p.co2e_kg);
+        stat.legs.push(feature);
+        stat.cities.add(p.prev_city);
+        stat.cities.add(p.host_city);
+      });
+
+      pointData.features.forEach((feature) => {
+        const p = feature.properties;
+        const team = p.team || "Unknown";
+        if (!stats.has(team)) {
+          stats.set(team, {
+            team,
+            color: colorForTeam(team),
+            distanceKm: 0,
+            co2eKg: 0,
+            legs: [],
+            cities: new Set()
+          });
+        }
+        stats.get(team).cities.add(p.host_city);
+      });
+
+      teamStats = stats;
+    }
+
+    function computeTeamMatches() {
+      const matchesByTeam = new Map();
+      const fixtureByTeamKey = new Map();
+      const makeFixtureKey = (team, kickoffUtc, stadium) => `${kickoffUtc}|${team}|${stadium}`;
+
+      fixtureRows.forEach((row) => {
+        fixtureByTeamKey.set(makeFixtureKey(row.home_team, row.kickoff_utc, row.stadium), {
+          opponent: row.away_team,
+          homeAway: "home",
+          matchUrl: row.match_url
+        });
+        fixtureByTeamKey.set(makeFixtureKey(row.away_team, row.kickoff_utc, row.stadium), {
+          opponent: row.home_team,
+          homeAway: "away",
+          matchUrl: row.match_url
+        });
+      });
+
+      const addMatch = (feature) => {
+        const p = feature.properties;
+        const team = p.team;
+        if (!team) return;
+        if (!matchesByTeam.has(team)) matchesByTeam.set(team, []);
+        const fixture = fixtureByTeamKey.get(makeFixtureKey(team, p.kickoff_utc, p.stadium)) || {};
+
+        matchesByTeam.get(team).push({
+          team,
+          opponent: fixture.opponent || "TBD",
+          homeAway: fixture.homeAway || p.home_away,
+          matchNumber: asNumber(p.match_number),
+          date: p.date,
+          kickoffUtc: p.kickoff_utc,
+          stage: p.stage,
+          group: p.group,
+          stadium: p.stadium,
+          hostCity: p.host_city,
+          matchUrl: fixture.matchUrl || "",
+          legFromPrevious: null,
+          legToNext: null
+        });
+      };
+
+      pointData.features.forEach(addMatch);
+
+      matchesByTeam.forEach((matches, team) => {
+        matches.sort((a, b) => {
+          const timeDiff = new Date(a.kickoffUtc) - new Date(b.kickoffUtc);
+          return timeDiff || a.matchNumber - b.matchNumber;
+        });
+
+        const legs = (teamStats.get(team)?.legs || [])
+          .slice()
+          .sort((a, b) => asNumber(a.properties.leg_number) - asNumber(b.properties.leg_number));
+
+        matches.forEach((match, index) => {
+          match.routeNumber = index + 1;
+          match.legFromPrevious = index > 0 ? legs[index - 1] || null : null;
+          match.legToNext = index < matches.length - 1 ? legs[index] || null : null;
+        });
+      });
+
+      teamMatches = matchesByTeam;
+    }
+
+    function matchesForSelectedTeam() {
+      return (teamMatches.get(selectedTeam) || []).filter((match) => isSelectedStage(match.stage));
+    }
+
+    function updateTeamSelectLabel() {
+      const label = selectedTeam === ALL_TEAMS ? "All teams" : selectedTeam;
+      teamSelectValue.innerHTML = teamLabelMarkup(label);
+
+      teamOptions.querySelectorAll(".team-option").forEach((option) => {
+        option.setAttribute("aria-selected", String(option.dataset.team === selectedTeam));
+      });
+    }
+
+    function closeTeamDropdown() {
+      teamOptions.classList.add("hidden");
+      teamSelectButton.setAttribute("aria-expanded", "false");
+    }
+
+    function openTeamDropdown() {
+      teamOptions.classList.remove("hidden");
+      teamSelectButton.setAttribute("aria-expanded", "true");
+
+      const selectedOption = teamOptions.querySelector('[aria-selected="true"]');
+      if (selectedOption) selectedOption.scrollIntoView({ block: "nearest" });
+    }
+
+    function toggleTeamDropdown() {
+      if (teamOptions.classList.contains("hidden")) {
+        openTeamDropdown();
+      } else {
+        closeTeamDropdown();
+      }
+    }
+
+    function selectTeam(team) {
+      selectedTeam = team;
+      updateTeamSelectLabel();
+      closeTeamDropdown();
+      updateView();
+    }
+
+    function addTeamOption(team) {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "team-option";
+      option.role = "option";
+      option.dataset.team = team;
+      option.innerHTML = teamLabelMarkup(team === ALL_TEAMS ? "All teams" : team);
+      option.addEventListener("click", () => selectTeam(team));
+      teamOptions.appendChild(option);
+    }
+
+    function populateTeamSelect() {
+      const teams = Array.from(teamStats.keys()).sort((a, b) => a.localeCompare(b));
+      teamOptions.innerHTML = "";
+      addTeamOption(ALL_TEAMS);
+      teams.forEach(addTeamOption);
+      updateTeamSelectLabel();
+      teamSelectButton.disabled = false;
+    }
+
+    function populateStageSelect() {
+      stageSelect.innerHTML = "";
+
+      STAGE_OPTIONS.forEach((stage) => {
+        const option = document.createElement("option");
+        option.value = stage.value;
+        option.textContent = stage.label;
+        stageSelect.appendChild(option);
+      });
+
+      stageSelect.value = selectedStage;
+      stageSelect.disabled = false;
+    }
+
+    function buildBounds(features) {
+      const bounds = new mapApi.LngLatBounds();
+
+      features.forEach((feature) => {
+        if (!feature.geometry) return;
+
+        if (feature.geometry.type === "Point") {
+          bounds.extend(feature.geometry.coordinates);
+        }
+
+        if (feature.geometry.type === "LineString") {
+          feature.geometry.coordinates.forEach((coord) => bounds.extend(coord));
+        }
+      });
+
+      return bounds;
+    }
+
+    function emptyFeatureCollection() {
+      return {
+        type: "FeatureCollection",
+        features: []
+      };
+    }
+
+    function lineFeature(coords, color) {
+      if (coords.length < 2) return emptyFeatureCollection();
+
+      return {
+        type: "FeatureCollection",
+        features: [{
+          type: "Feature",
+          properties: { team_color: color },
+          geometry: {
+            type: "LineString",
+            coordinates: coords
+          }
+        }]
+      };
+    }
+
+    function pointFeature(coord, color) {
+      if (!coord) return emptyFeatureCollection();
+
+      return {
+        type: "FeatureCollection",
+        features: [{
+          type: "Feature",
+          properties: { team_color: color },
+          geometry: {
+            type: "Point",
+            coordinates: coord
+          }
+        }]
+      };
+    }
+
+    function setSourceData(sourceId, data) {
+      const source = map?.getSource(sourceId);
+      if (source) source.setData(data);
+    }
+
+    function sortedRouteFeatures(team) {
+      return routeData.features
+        .filter((feature) => feature.properties.team === team && isSelectedStage(feature.properties.stage))
+        .sort((a, b) => asNumber(a.properties.leg_number) - asNumber(b.properties.leg_number));
+    }
+
+    function flattenRouteCoordinates(features) {
+      const coords = [];
+
+      features.forEach((feature) => {
+        const lineCoords = feature.geometry?.coordinates || [];
+        lineCoords.forEach((coord) => {
+          const previous = coords[coords.length - 1];
+          if (!previous || previous[0] !== coord[0] || previous[1] !== coord[1]) {
+            coords.push(coord);
+          }
+        });
+      });
+
+      return coords;
+    }
+
+    function distanceBetweenCoordsKm(a, b) {
+      const radiusKm = 6371.0088;
+      const toRadians = (value) => value * Math.PI / 180;
+      const lon1 = toRadians(a[0]);
+      const lat1 = toRadians(a[1]);
+      const lon2 = toRadians(b[0]);
+      const lat2 = toRadians(b[1]);
+      const deltaLat = lat2 - lat1;
+      const deltaLon = lon2 - lon1;
+      const sinLat = Math.sin(deltaLat / 2);
+      const sinLon = Math.sin(deltaLon / 2);
+      const h = sinLat * sinLat + Math.cos(lat1) * Math.cos(lat2) * sinLon * sinLon;
+
+      return 2 * radiusKm * Math.atan2(Math.sqrt(h), Math.sqrt(Math.max(0, 1 - h)));
+    }
+
+    function buildRouteMeasure(coords) {
+      const distances = [0];
+      let totalKm = 0;
+
+      for (let i = 1; i < coords.length; i += 1) {
+        totalKm += distanceBetweenCoordsKm(coords[i - 1], coords[i]);
+        distances.push(totalKm);
+      }
+
+      return { coords, distances, totalKm };
+    }
+
+    function routeSliceAtDistance(route, targetKm) {
+      const { coords, distances, totalKm } = route;
+      if (!coords.length) return [];
+      if (targetKm <= 0) return [coords[0]];
+      if (targetKm >= totalKm) return coords;
+
+      let low = 0;
+      let high = distances.length - 1;
+
+      while (low < high) {
+        const mid = Math.floor((low + high) / 2);
+        if (distances[mid] < targetKm) {
+          low = mid + 1;
+        } else {
+          high = mid;
+        }
+      }
+
+      const segmentEndIndex = Math.max(1, low);
+      const segmentStartIndex = segmentEndIndex - 1;
+      const segmentStartDistance = distances[segmentStartIndex];
+      const segmentEndDistance = distances[segmentEndIndex];
+      const segmentLength = segmentEndDistance - segmentStartDistance;
+      const segmentProgress = segmentLength <= 0
+        ? 0
+        : (targetKm - segmentStartDistance) / segmentLength;
+      const start = coords[segmentStartIndex];
+      const end = coords[segmentEndIndex];
+      const currentCoord = [
+        start[0] + (end[0] - start[0]) * segmentProgress,
+        start[1] + (end[1] - start[1]) * segmentProgress
+      ];
+
+      return coords.slice(0, segmentEndIndex).concat([currentCoord]);
+    }
+
+    function easeInOutSine(value) {
+      return 0.5 - Math.cos(Math.PI * value) / 2;
+    }
+
+    function compressOrderList(orders) {
+      if (!orders.length) return "";
+
+      const sorted = [...orders].sort((a, b) => a - b);
+      const ranges = [];
+      let start = sorted[0];
+      let previous = sorted[0];
+
+      sorted.slice(1).forEach((order) => {
+        if (order === previous + 1) {
+          previous = order;
+          return;
+        }
+
+        ranges.push(start === previous ? `${start}` : `${start}-${previous}`);
+        start = order;
+        previous = order;
+      });
+
+      ranges.push(start === previous ? `${start}` : `${start}-${previous}`);
+      return ranges.join(", ");
+    }
+
+    function updateSelectedCityLabels() {
+      if (!map?.getSource("selected-city-labels-source")) return;
+
+      if (selectedTeam === ALL_TEAMS) {
+        setSourceData("selected-city-labels-source", emptyFeatureCollection());
+        return;
+      }
+
+      const groups = new Map();
+      const matches = matchesForSelectedTeam();
+
+      matches.forEach((match) => {
+        const point = pointData.features.find((feature) => {
+          const p = feature.properties;
+          return p.team === selectedTeam && p.kickoff_utc === match.kickoffUtc && p.stadium === match.stadium;
+        });
+        if (!point) return;
+
+        const city = normalizeCity(match.hostCity);
+        const coords = point.geometry.coordinates;
+        const key = `${city}|${coords[0]}|${coords[1]}`;
+
+        if (!groups.has(key)) {
+          groups.set(key, {
+            city,
+            coords,
+            orders: []
+          });
+        }
+
+        groups.get(key).orders.push(match.routeNumber);
+      });
+
+      setSourceData("selected-city-labels-source", {
+        type: "FeatureCollection",
+        features: [...groups.values()].map((group) => ({
+          type: "Feature",
+          properties: {
+            label: `${compressOrderList(group.orders)}. ${group.city}`
+          },
+          geometry: {
+            type: "Point",
+            coordinates: group.coords
+          }
+        }))
+      });
+    }
+
+    function stopRouteAnimation() {
+      if (routeAnimationFrame) {
+        cancelAnimationFrame(routeAnimationFrame);
+        routeAnimationFrame = null;
+      }
+
+      setSourceData("animated-route-source", emptyFeatureCollection());
+      setSourceData("moving-point-source", emptyFeatureCollection());
+    }
+
+    function startRouteAnimation() {
+      stopRouteAnimation();
+      updateSelectedCityLabels();
+
+      if (selectedTeam === ALL_TEAMS || !map?.getSource("animated-route-source")) return;
+
+      const features = sortedRouteFeatures(selectedTeam);
+      const coords = flattenRouteCoordinates(features);
+      const color = colorForTeam(selectedTeam);
+      const route = buildRouteMeasure(coords);
+
+      if (coords.length < 2) {
+        setSourceData("moving-point-source", pointFeature(coords[0], color));
+        return;
+      }
+
+      const duration = Math.min(14000, Math.max(4200, route.totalKm * 0.85));
+      let startedAt = null;
+
+      const draw = (timestamp) => {
+        if (!startedAt) startedAt = timestamp;
+
+        const linearProgress = Math.min(1, (timestamp - startedAt) / duration);
+        const progress = easeInOutSine(linearProgress);
+        const visibleCoords = routeSliceAtDistance(route, progress * route.totalKm);
+        const currentCoord = visibleCoords[visibleCoords.length - 1];
+
+        setSourceData("animated-route-source", lineFeature(visibleCoords, color));
+        setSourceData("moving-point-source", pointFeature(currentCoord, color));
+
+        if (linearProgress < 1) {
+          routeAnimationFrame = requestAnimationFrame(draw);
+        }
+      };
+
+      routeAnimationFrame = requestAnimationFrame(draw);
+    }
+
+    function getFitPadding() {
+      if (window.innerWidth <= 720) {
+        return {
+          top: 58,
+          right: 28,
+          bottom: Math.round(window.innerHeight * 0.44),
+          left: 28
+        };
+      }
+
+      return selectedTeam === ALL_TEAMS
+        ? { top: 48, right: 48, bottom: 48, left: 48 }
+        : { top: 70, right: 70, bottom: 70, left: 70 };
+    }
+
+    function updateFilters() {
+      if (!map || !map.getLayer("routes")) return;
+
+      const filter = selectedMapFilter();
+      map.setFilter("routes", filter);
+      map.setFilter("points", filter);
+
+      if (selectedTeam === ALL_TEAMS) {
+        map.setPaintProperty("routes", "line-opacity", 0.34);
+        map.setPaintProperty("routes", "line-width", 1.7);
+        map.setPaintProperty("points", "circle-opacity", 0.55);
+        map.setPaintProperty("points", "circle-radius", 3.8);
+        return;
+      }
+
+      map.setPaintProperty("routes", "line-opacity", 0.22);
+      map.setPaintProperty("routes", "line-width", 2.2);
+      map.setPaintProperty("points", "circle-opacity", 0.9);
+      map.setPaintProperty("points", "circle-radius", 5.4);
+    }
+
+    function fitSelection() {
+      if (!map || !routeData) return;
+
+      const routeFeatures = routeData.features.filter((feature) => featureMatchesSelection(feature));
+      const pointFeatures = pointData.features.filter((feature) => featureMatchesSelection(feature));
+
+      const bounds = buildBounds([...routeFeatures, ...pointFeatures]);
+      if (!bounds.isEmpty()) {
+        map.fitBounds(bounds, {
+          padding: getFitPadding(),
+          maxZoom: selectedTeam === ALL_TEAMS ? 3.8 : 5.6,
+          duration: 700
+        });
+      }
+    }
+
+    function renderStats() {
+      const stat = buildSelectionStat(selectedTeam);
+
+      distanceValue.textContent = formatKm(stat.distanceKm);
+      co2Value.textContent = formatTons(stat.co2eKg);
+      legsValue.textContent = stat.legs.length.toLocaleString("en-US");
+      citiesValue.textContent = stat.cities.size.toLocaleString("en-US");
+    }
+
+    function formatStage(stage, group) {
+      const stageLabel = String(stage || "")
+        .replace(/-/g, " ")
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+      if (stage === "group-stage" && group) {
+        return `Group ${group}`;
+      }
+
+      return stageLabel || "Match";
+    }
+
+    function renderTransitionFromLeg(leg, context = "") {
+      if (!leg) return "";
+
+      const p = leg.properties;
+      const distanceKm = asNumber(p.distance_km);
+      const co2eKg = asNumber(p.co2e_kg);
+      const sameCity = distanceKm < 0.1 || p.prev_city === p.host_city;
+      const destination = normalizeCity(p.host_city);
+      const contextText = context
+        ? `<span class="leg-context">${escapeHtml(context)}</span> · `
+        : "";
+
+      const text = sameCity
+        ? `${contextText}<span class="same-city">Same city, no flight</span> · ${escapeHtml(formatKm(distanceKm))} · ${escapeHtml(formatTons(co2eKg))} CO2e`
+        : `${contextText}<span class="leg-distance">${escapeHtml(formatKm(distanceKm))}</span> to ${escapeHtml(destination)} · ${escapeHtml(formatTons(co2eKg))} CO2e`;
+
+      return `
+        <div class="leg-step">
+          <div class="leg-arrow">&darr;</div>
+          <div class="leg-summary">${text}</div>
+        </div>
+      `;
+    }
+
+    function renderTransition(match) {
+      return renderTransitionFromLeg(match.legToNext);
+    }
+
+    function renderList() {
+      detailsList.innerHTML = "";
+
+      if (selectedTeam === ALL_TEAMS) {
+        const ranked = Array.from(teamStats.keys())
+          .map((team) => buildSelectionStat(team))
+          .filter((stat) => stat.legs.length || stat.cities.size)
+          .sort((a, b) => b.distanceKm - a.distanceKm);
+
+        listTitle.textContent = selectedStage === ALL_STAGES ? "Teams by distance" : `${stageLabel(selectedStage)} distances`;
+        listCount.textContent = ranked.length ? `${ranked.length} teams` : "No teams";
+
+        ranked.forEach((stat, index) => {
+          const item = document.createElement("div");
+          item.className = "item";
+          item.innerHTML = `
+            <div class="item-main">
+              <span><span class="rank">${index + 1}.</span> ${teamLabelMarkup(stat.team)}</span>
+              <span>${escapeHtml(formatKm(stat.distanceKm))}</span>
+            </div>
+            <div class="item-meta">${escapeHtml(formatTons(stat.co2eKg))} CO2e, ${stat.legs.length} trips, ${stat.cities.size} cities</div>
+          `;
+          detailsList.appendChild(item);
+        });
+
+        if (!ranked.length) {
+          const item = document.createElement("div");
+          item.className = "item";
+          item.textContent = "No teams in this stage.";
+          detailsList.appendChild(item);
+        }
+        return;
+      }
+
+      const stat = buildSelectionStat(selectedTeam);
+      const matches = matchesForSelectedTeam();
+      const timeline = document.createElement("div");
+      timeline.className = "timeline";
+
+      listTitle.textContent = selectedStage === ALL_STAGES ? "Match route" : `${stageLabel(selectedStage)} route`;
+      listCount.textContent = `${matches.length} matches, ${stat.legs.length} trips`;
+
+      if (!matches.length) {
+        const item = document.createElement("div");
+        item.className = "item";
+        item.textContent = "No matches in this stage.";
+        detailsList.appendChild(item);
+        return;
+      }
+
+      matches.forEach((match, index) => {
+        const previousMatch = matches[index - 1];
+        const hasSequentialPrevious = previousMatch && previousMatch.routeNumber === match.routeNumber - 1;
+
+        if (selectedStage !== ALL_STAGES && !hasSequentialPrevious && match.legFromPrevious) {
+          timeline.insertAdjacentHTML("beforeend", renderTransitionFromLeg(match.legFromPrevious, "Flight into this match"));
+        }
+
+        const card = document.createElement("div");
+        card.className = "match-card";
+        card.innerHTML = `
+          <div class="match-top">
+            <span class="match-number">Match ${escapeHtml(match.routeNumber)}</span>
+            <span class="match-date">${escapeHtml(formatDate(match.kickoffUtc))}</span>
+          </div>
+          <div class="match-title">${teamLabelMarkup(match.team)} <span class="versus">vs</span> ${teamLabelMarkup(match.opponent)}</div>
+          <div class="match-meta">
+            ${escapeHtml(formatStage(match.stage, match.group))} · ${escapeHtml(normalizeCity(match.hostCity))}<br>
+            ${escapeHtml(match.stadium)}
+          </div>
+        `;
+        timeline.appendChild(card);
+
+        const nextMatch = matches[index + 1];
+        if (nextMatch && nextMatch.routeNumber === match.routeNumber + 1) {
+          timeline.insertAdjacentHTML("beforeend", renderTransition(match));
+        }
+      });
+
+      detailsList.appendChild(timeline);
+    }
+
+    function updateView() {
+      updateFilters();
+      renderStats();
+      renderList();
+      fitSelection();
+      startRouteAnimation();
+    }
+
+    function addMapLayers() {
+      map.addSource("routes-source", {
+        type: "geojson",
+        data: routeData
+      });
+
+      map.addSource("points-source", {
+        type: "geojson",
+        data: pointData
+      });
+
+      map.addSource("animated-route-source", {
+        type: "geojson",
+        data: emptyFeatureCollection()
+      });
+
+      map.addSource("moving-point-source", {
+        type: "geojson",
+        data: emptyFeatureCollection()
+      });
+
+      map.addSource("selected-city-labels-source", {
+        type: "geojson",
+        data: emptyFeatureCollection()
+      });
+
+      map.addLayer({
+        id: "routes",
+        type: "line",
+        source: "routes-source",
+        layout: {
+          "line-cap": "round",
+          "line-join": "round"
+        },
+        paint: {
+          "line-color": ["get", "team_color"],
+          "line-width": 1.7,
+          "line-opacity": 0.34
+        }
+      });
+
+      map.addLayer({
+        id: "animated-route",
+        type: "line",
+        source: "animated-route-source",
+        layout: {
+          "line-cap": "round",
+          "line-join": "round"
+        },
+        paint: {
+          "line-color": ["get", "team_color"],
+          "line-width": 4.8,
+          "line-opacity": 0.96
+        }
+      });
+
+      map.addLayer({
+        id: "points",
+        type: "circle",
+        source: "points-source",
+        paint: {
+          "circle-radius": 3.8,
+          "circle-color": ["get", "team_color"],
+          "circle-opacity": 0.55,
+          "circle-stroke-width": 1,
+          "circle-stroke-color": "#ffffff"
+        }
+      });
+
+      map.addLayer({
+        id: "moving-point-halo",
+        type: "circle",
+        source: "moving-point-source",
+        paint: {
+          "circle-radius": 10,
+          "circle-color": "#ffffff",
+          "circle-opacity": 0.9
+        }
+      });
+
+      map.addLayer({
+        id: "moving-point",
+        type: "circle",
+        source: "moving-point-source",
+        paint: {
+          "circle-radius": 5.5,
+          "circle-color": ["get", "team_color"],
+          "circle-stroke-width": 1.5,
+          "circle-stroke-color": "#ffffff"
+        }
+      });
+
+      map.addLayer({
+        id: "selected-city-labels",
+        type: "symbol",
+        source: "selected-city-labels-source",
+        layout: {
+          "text-field": ["get", "label"],
+          "text-font": ["Open Sans Semibold"],
+          "text-size": 12,
+          "text-offset": [0, 1.35],
+          "text-anchor": "top",
+          "text-allow-overlap": false
+        },
+        paint: {
+          "text-color": "#17212b",
+          "text-halo-color": "#ffffff",
+          "text-halo-width": 1.5
+        }
+      });
+
+      map.on("mouseenter", "routes", () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+
+      map.on("mouseleave", "routes", () => {
+        map.getCanvas().style.cursor = "";
+      });
+
+      map.on("click", "routes", (event) => {
+        if (map.queryRenderedFeatures(event.point, { layers: ["points"] }).length) return;
+
+        const feature = event.features[0];
+        const p = feature.properties;
+        const opponent = p.opponent || "TBD";
+        const routeTitle = `${escapeHtml(normalizeCity(p.prev_city))} &rarr; ${escapeHtml(normalizeCity(p.host_city))}`;
+        const matchLine = `${escapeHtml(p.team)} vs ${escapeHtml(opponent)}`;
+
+        new mapApi.Popup()
+          .setLngLat(event.lngLat)
+          .setHTML(`
+            <div class="popup-title">${routeTitle}</div>
+            <div class="popup-meta">
+              ${matchLine}<br>
+              ${escapeHtml(formatStage(p.stage, p.group))} &middot; ${escapeHtml(formatDate(p.kickoff_utc))}<br>
+              ${escapeHtml(p.stadium)}, ${escapeHtml(normalizeCity(p.host_city))}<br>
+              Distance: ${escapeHtml(formatKm(p.distance_km))}<br>
+              CO2e: ${escapeHtml(formatTons(p.co2e_kg))}
+            </div>
+          `)
+          .addTo(map);
+      });
+    }
+
+    async function loadData() {
+      const [routesResponse, pointsResponse, fixturesResponse] = await Promise.all([
+        fetch(ROUTES_URL),
+        fetch(POINTS_URL),
+        fetch(FIXTURES_URL)
+      ]);
+
+      if (!routesResponse.ok || !pointsResponse.ok || !fixturesResponse.ok) {
+        throw new Error("Could not load local route, point, or fixture files.");
+      }
+
+      routeData = await routesResponse.json();
+      pointData = await pointsResponse.json();
+      fixtureRows = parseCsv(await fixturesResponse.text());
+
+      enrichFeatures(routeData);
+      enrichFeatures(pointData);
+      annotateRouteStages();
+      computeTeamStats();
+      computeTeamMatches();
+      populateTeamSelect();
+      populateStageSelect();
+    }
+
+    async function initMap() {
+      await loadData();
+      renderStats();
+      renderList();
+
+      const token = getMapboxAccessToken();
+      const useMapboxStyle = Boolean(token && window.mapboxgl);
+      mapApi = useMapboxStyle ? window.mapboxgl : window.maplibregl;
+
+      if (useMapboxStyle) {
+        window.mapboxgl.accessToken = token;
+      }
+
+      map = new mapApi.Map({
+        container: "map",
+        style: useMapboxStyle ? MAPBOX_STYLE_URL : CARTO_BASEMAP_STYLE,
+        ...(useMapboxStyle ? {} : { transformRequest: transformMapboxRequest }),
+        center: [-98, 39],
+        zoom: 2.5,
+        attributionControl: true
+      });
+
+      map.addControl(new mapApi.NavigationControl({ visualizePitch: true }), "bottom-left");
+
+      map.on("load", () => {
+        addMapLayers();
+        renderStats();
+        renderList();
+        fitSelection();
+        startRouteAnimation();
+      });
+
+      map.on("error", (event) => console.error("MapLibre map error:", event.error || event));
+    }
+
+    teamSelectButton.addEventListener("click", toggleTeamDropdown);
+    teamSelectButton.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeTeamDropdown();
+      if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openTeamDropdown();
+        teamOptions.querySelector('[aria-selected="true"]')?.focus();
+      }
+    });
+
+    teamOptions.addEventListener("keydown", (event) => {
+      const options = [...teamOptions.querySelectorAll(".team-option")];
+      const currentIndex = options.indexOf(document.activeElement);
+
+      if (event.key === "Escape") {
+        closeTeamDropdown();
+        teamSelectButton.focus();
+      }
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        options[Math.min(currentIndex + 1, options.length - 1)]?.focus();
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        options[Math.max(currentIndex - 1, 0)]?.focus();
+      }
+    });
+
+    stageSelect.addEventListener("change", (event) => {
+      selectedStage = event.target.value;
+      closeTeamDropdown();
+      updateView();
+    });
+
+    function setAboutOpen(isOpen) {
+      aboutToggle.setAttribute("aria-expanded", String(isOpen));
+
+      if (isOpen) {
+        aboutContent.classList.remove("hidden");
+        requestAnimationFrame(() => aboutContent.classList.add("is-open"));
+        return;
+      }
+
+      aboutContent.classList.remove("is-open");
+      window.setTimeout(() => {
+        if (aboutToggle.getAttribute("aria-expanded") === "false") {
+          aboutContent.classList.add("hidden");
+        }
+      }, 230);
+    }
+
+    aboutToggle.addEventListener("click", () => {
+      const isOpen = aboutToggle.getAttribute("aria-expanded") === "true";
+      setAboutOpen(!isOpen);
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!teamSelect.contains(event.target)) closeTeamDropdown();
+
+      const aboutIsOpen = aboutToggle.getAttribute("aria-expanded") === "true";
+      const clickInsideAbout = aboutContent.contains(event.target) || aboutToggle.contains(event.target);
+      if (aboutIsOpen && !clickInsideAbout) {
+        setAboutOpen(false);
+      }
+    });
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get("mapbox_token") || urlParams.get("token");
+    if (tokenFromUrl) {
+      localStorage.setItem("wc26_mapbox_access_token", tokenFromUrl.trim());
+      urlParams.delete("mapbox_token");
+      urlParams.delete("token");
+      const cleanQuery = urlParams.toString();
+      window.history.replaceState(
+        {},
+        document.title,
+        `${window.location.pathname}${cleanQuery ? `?${cleanQuery}` : ""}${window.location.hash}`
+      );
+    }
+
+    window.addEventListener("resize", () => {
+      if (!map) return;
+      map.resize();
+      fitSelection();
+    });
+
+    initMap().catch((error) => console.error(error));
+  </script>
+</body>
+</html>
